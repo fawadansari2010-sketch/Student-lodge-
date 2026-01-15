@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Student Lodge – Fawad Apps</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Manifest for PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+body{
+  margin:0;
+  font-family:system-ui, sans-serif;
+  background:#f4f4f5;
+}
+body.dark{background:#020617;color:#e5e7eb}
+#splash{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(135deg,#4f46e5,#1e293b);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:center;
+  padding:30px 20px;
+  z-index:5000;
+  text-align:center;
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn{
+  from{opacity:0;transform:scale(.98)}
+  to{opacity:1;transform:scale(1)}
+}
+#splash h1{margin-top:20px;font-size:26px}
+#splash h1 span{display:block;font-size:14px;opacity:.9}
+#splash h2{margin-top:10px;font-weight:500}
+#splash .go-btn{
+  width:160px;
+  padding:14px;
+  font-size:16px;
+  border-radius:30px;
+  background:#fff;
+  color:#4f46e5;
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+  transition:.2s;
+}
+#splash .go-btn:active{transform:scale(.95)}
+#splash footer{font-size:13px;opacity:.85}
+header{
+  position:sticky;
+  top:0;
+  background:#fff;
+  padding:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  z-index:100;
+}
+body.dark header{background:#020617}
+.menu-btn,.add-btn{
+  font-size:22px;
+  padding:8px 14px;
+  border-radius:14px;
+}
+#menu{
+  position:fixed;
+  background:#fff;
+  border-radius:18px;
+  padding:12px;
+  width:240px;
+  display:none;
+  z-index:1000;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);
+}
+body.dark #menu{background:#1e293b}
+button{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  border:none;
+  border-radius:14px;
+  background:#4f46e5;
+  color:#fff;
+  font-size:14px;
+  transition:0.2s;
+}
+button:active{transform:scale(0.95);}
+#search{
+  width:calc(100% - 20px);
+  margin:10px;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid #ccc;
+}
+.card{
+  background:#fff;
+  margin:10px;
+  border-radius:20px;
+  padding:10px;
+  animation:fadeIn .2s ease;
+}
+body.dark .card{background:#1e293b}
+.row{display:flex;align-items:center;gap:8px}
+.arrow{transition:.2s}
+.arrow.open{transform:rotate(90deg)}
+.tick.paid{color:#16a34a}
+.tick.unpaid{color:#dc2626}
+.expand{display:none;margin-top:8px}
+.expand.show{display:block}
+input{
+  width:100%;
+  padding:10px;
+  margin:4px 0;
+  border-radius:14px;
+  border:1px solid #ccc;
+  font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="splash">
+  <div>
+    <h1>Fawad Apps <span>A Company of Trust</span></h1>
+    <h2>Naoushad Raushan Lodge</h2>
+  </div>
+  <button class="go-btn" onclick="enterApp()">GO</button>
+  <footer>This app is created by Fawad Ansari</footer>
+</div>
+
+<header>
+  <div class="menu-btn" id="menuBtn">⋮</div>
+  <b>Fawad Apps</b>
+  <div class="add-btn" onclick="addStudent()">＋</div>
+</header>
+
+<div id="menu">
+  <input type="month" id="monthPicker">
+  <button onclick="changeMonth()">📅 Change Month</button>
+  <button onclick="save()">💾 Save</button>
+  <button onclick="exportBackup()">📤 Export Backup</button>
+  <button onclick="importBackup()">📥 Import Backup</button>
+  <button onclick="toggleDark()">🌙 Dark Mode</button>
+  <button onclick="exportPDF()">📄 Export PDF</button>
+  <input type="file" id="importFile" hidden>
+</div>
+
+<input id="search" placeholder="Search name" oninput="search(this.value)">
+<div id="list"></div>
+
+<!-- PDF Progress Bar -->
+<div id="pdfProgress" style="position:fixed;top:0;left:0;width:0;height:4px;background:#4f46e5;transition:width 0.1s;z-index:10000;"></div>
+
+<script>
+const LODGE_LOGO = "";
+
+// Splash logic
+if(sessionStorage.getItem("entered")==="true"){splash.style.display="none";}
+function enterApp(){splash.style.display="none";sessionStorage.setItem("entered","true");}
+
+// Menu toggle
+const menu=document.getElementById("menu");
+menuBtn.onclick=e=>{
+  const r=e.target.getBoundingClientRect();
+  menu.style.top=r.bottom+8+"px";
+  menu.style.left=r.right-menu.offsetWidth+"px";
+  menu.style.display=menu.style.display==="block"?"none":"block";
+};
+
+// Month & data
+let currentMonth=localStorage.getItem("currentMonth")||new Date().toISOString().slice(0,7);
+let data=JSON.parse(localStorage.getItem("data_"+currentMonth)||"[]");
+monthPicker.value=currentMonth;
+
+// Add/Delete/Toggle
+function addStudent(){data.push({name:"",room:"",floor:"",mobile:"",paid:false,open:false});render();}
+function toggleRow(i){data[i].open=!data[i].open;render();}
+function togglePaid(i){data[i].paid=!data[i].paid;render();}
+function removeRow(i){data.splice(i,1);render();}
+
+// Render function
+function render(){
+  list.innerHTML="";
+  data.forEach((r,i)=>{
+    list.innerHTML+=`
+    <div class="card">
+      <div class="row">
+        <div>${i+1}</div>
+        <div class="tick ${r.paid?"paid":"unpaid"}">${r.paid?"✔":"✖"}</div>
+        <input value="${r.name}" placeholder="Name" oninput="data[${i}].name=this.value">
+        <div class="arrow ${r.open?"open":""}" onclick="toggleRow(${i})">▶</div>
+      </div>
+      <div class="expand ${r.open?"show":""}">
+        <input placeholder="Room" value="${r.room||""}" oninput="data[${i}].room=this.value">
+        <input placeholder="Floor" value="${r.floor||""}" oninput="data[${i}].floor=this.value">
+        <input type="tel" inputmode="numeric" placeholder="Mobile" value="${r.mobile||""}" oninput="data[${i}].mobile=this.value">
+        <button onclick="togglePaid(${i})">${r.paid?"Paid":"Not Paid"}</button>
+        <button onclick="openWhatsApp(${i})" style="background:#22c55e">💬 WhatsApp Reminder</button>
+        <button style="background:#991b1b" onclick="removeRow(${i})">Delete</button>
+      </div>
+    </div>`;
+  });
+}
+
+// WhatsApp
+function openWhatsApp(i){
+  if(!data[i].mobile)return alert("Mobile number missing");
+  const msg=encodeURIComponent("Please pay your dues for the current month at the lodge. Kindly ignore this message if payment has already been made.");
+  window.open(`https://wa.me/91${data[i].mobile}?text=${msg}`);
+}
+
+// Search
+function search(q){
+  q=q.toLowerCase();
+  document.querySelectorAll(".card").forEach((c,i)=>{
+    c.style.display=(data[i]?.name||"").toLowerCase().includes(q)?"":"none";
+  });
+}
+
+// Save & Change Month
+function save(){
+  localStorage.setItem("data_"+currentMonth,JSON.stringify(data));
+  localStorage.setItem("currentMonth",currentMonth);
+}
+function changeMonth(){
+  save();
+  currentMonth=monthPicker.value;
+  data=JSON.parse(localStorage.getItem("data_"+currentMonth)||"[]");
+  render();
+}
+
+// Backup
+function exportBackup(){
+  save();
+  const b=new Blob([JSON.stringify({month:currentMonth,data},null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);
+  a.download="backup_"+currentMonth+".json";
+  a.click();
+  URL.revokeObjectURL(a.href); // Fix Chrome download message
+}
+function importBackup(){importFile.click();}
+importFile.onchange=e=>{
+  try{
+    const r=new FileReader();
+    r.onload=()=>{
+      const b=JSON.parse(r.result);
+      if(!b.month || !Array.isArray(b.data)) throw "Invalid backup file";
+      currentMonth=b.month;
+      data=b.data;
+      save();
+      monthPicker.value=currentMonth;
+      render();
+    };
+    r.readAsText(e.target.files[0]);
+  }catch(err){
+    alert("Invalid backup file");
+  }
+};
+
+// Dark mode
+function toggleDark(){
+  document.body.classList.toggle("dark");
+  localStorage.setItem("dark",document.body.classList.contains("dark"));
+}
+if(localStorage.getItem("dark")==="true")document.body.classList.add("dark");
+
+// PDF export with progress bar & alternate row shading
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p","mm","a4");
+  const pageW = doc.internal.pageSize.getWidth();
+  const startX=15,rowH=10,colW=[20,110,40];
+  let y=20;
+
+  const progressBar = document.getElementById("pdfProgress");
+  progressBar.style.width="0%";
+  progressBar.style.display="block";
+
+  // Header
+  ["S.No","Name","Status"].forEach((t,i)=>{
+    doc.rect(startX+colW.slice(0,i).reduce((a,b)=>a+b,0),y,colW[i],rowH);
+    doc.text(t,startX+colW.slice(0,i).reduce((a,b)=>a+b,0)+3,y+7);
+  });
+  y+=rowH;
+
+  // Rows
+  data.forEach((r,i)=>{
+    if(y>280){doc.addPage();y=20;}
+    doc.setFillColor(i%2===0?245:255,245,245);
+    doc.rect(startX,y,colW[0],rowH,"F");
+    doc.rect(startX+colW[0],y,colW[1],rowH,"F");
+    doc.rect(startX+colW[0]+colW[1],y,colW[2],rowH,"F");
+
+    doc.setDrawColor(0);
+    doc.rect(startX,y,colW[0],rowH);
+    doc.rect(startX+colW[0],y,colW[1],rowH);
+    doc.rect(startX+colW[0]+colW[1],y,colW[2],rowH);
+
+    doc.text(String(i+1),startX+5,y+7);
+    doc.text(r.name||"",startX+colW[0]+3,y+7);
+    doc.setTextColor(r.paid?22:185,r.paid?163:28,r.paid?74:28);
+    doc.text(r.paid?"PAID":"NOT PAID",startX+colW[0]+colW[1]+5,y+7);
+    doc.setTextColor(0);
+
+    // Update progress bar
+    progressBar.style.width = Math.round(((i+1)/data.length)*100)+"%";
+  });
+
+  doc.save("Student_Lodge_"+currentMonth+".pdf");
+  progressBar.style.display="none";
+}
+
+render();
+
+// PWA service worker registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js')
+    .then(reg => console.log('Service Worker registered:', reg.scope))
+    .catch(err => console.log('Service Worker registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
