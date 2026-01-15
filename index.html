@@ -14,7 +14,6 @@
 /* --- BASE STYLES --- */
 *{
     box-sizing:border-box;
-    /* REMOVES THE BLUE HIGHLIGHT ON CLICK FOR ALL ELEMENTS */
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important;
     touch-action:manipulation;
@@ -51,11 +50,11 @@ body.dark header{background:#1e293b;box-shadow: 0 2px 10px rgba(0,0,0,0.4);}
 
 .menu-btn,.add-btn{font-size:24px;padding:8px 14px;border-radius:14px;cursor: pointer; position: relative;}
 
-/* --- THREE-DOT MENU (PERFECTLY ALIGNED UNDER OPTION) --- */
+/* --- THREE-DOT MENU --- */
 #menu{
   position:fixed; 
-  right: 14px; /* Matches header padding to align with button */
-  top: 55px;  /* Directly under the 3-dot icon */
+  right: 14px; 
+  top: 55px;  
   background:#fff;
   border-radius:16px;
   padding:10px;
@@ -92,7 +91,6 @@ input{
 }
 body.dark input{background: #334155; border-color: #475569; color: #fff;}
 
-/* Side-by-side layout preserved */
 .input-group { display: flex; gap: 10px; }
 .input-group input { flex: 1; }
 
@@ -162,9 +160,12 @@ body.dark .expand{border-color: #334155;}
 <div id="list"></div>
 
 <script>
-let currentMonth = localStorage.getItem("currentMonth") || new Date().toISOString().slice(0,7);
-let data = JSON.parse(localStorage.getItem("data_" + currentMonth) || "[]");
-let darkMode = localStorage.getItem("dark") === "true";
+// --- NAMESPACED STORAGE KEYS ---
+const PREFIX = "NRL_V1_";
+
+let currentMonth = localStorage.getItem(PREFIX + "currentMonth") || new Date().toISOString().slice(0,7);
+let data = JSON.parse(localStorage.getItem(PREFIX + "data_" + currentMonth) || "[]");
+let darkMode = localStorage.getItem(PREFIX + "dark") === "true";
 
 if(sessionStorage.getItem("entered")==="true") splash.style.display="none"
 function enterApp(){ splash.style.display="none"; sessionStorage.setItem("entered","true") }
@@ -173,9 +174,9 @@ document.getElementById("monthPicker").value = currentMonth;
 if(darkMode) document.body.classList.add("dark");
 
 function save() {
-  localStorage.setItem("currentMonth", currentMonth);
-  localStorage.setItem("data_" + currentMonth, JSON.stringify(data));
-  localStorage.setItem("dark", darkMode);
+  localStorage.setItem(PREFIX + "currentMonth", currentMonth);
+  localStorage.setItem(PREFIX + "data_" + currentMonth, JSON.stringify(data));
+  localStorage.setItem(PREFIX + "dark", darkMode);
 }
 
 function addStudent(){
@@ -230,7 +231,9 @@ function removeRow(i) { data.splice(i,1); render(); save(); }
 function changeMonth() {
   save(); 
   currentMonth = document.getElementById("monthPicker").value;
-  data = JSON.parse(localStorage.getItem("data_" + currentMonth) || "[]");
+  // Fixing the Read for new month selection
+  let newData = localStorage.getItem(PREFIX + "data_" + currentMonth);
+  data = newData ? JSON.parse(newData) : [];
   render();
   save(); 
   document.getElementById("menu").style.display = "none";
@@ -255,24 +258,13 @@ const menuBtn = document.getElementById("menuBtn");
 
 menuBtn.onclick = (e) => {
   const rect = menuBtn.getBoundingClientRect();
-
   menu.style.display = "block";
-
-  // Perfect right-side alignment under 3-dot button
   menu.style.top = `${rect.bottom + 8}px`;
   menu.style.left = `${rect.right - menu.offsetWidth}px`;
-
-  // Extra safety so it never goes off-screen
-  if (menu.offsetLeft < 10) {
-    menu.style.left = "10px";
-  }
-
-  // Smooth pop animation (does not affect UI)
+  if (menu.offsetLeft < 10) menu.style.left = "10px";
   menu.style.animation = "menuPop 0.2s ease-out";
-
   e.stopPropagation();
 };
-
 
 window.onclick = (e) => {
   if (e.target !== menu && !menu.contains(e.target)) {
@@ -286,7 +278,7 @@ function exportBackup() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Lodge_Backup_${currentMonth}.json`;
+    a.download = `Lodge_V1_Backup_${currentMonth}.json`;
     a.click();
 }
 
@@ -303,7 +295,7 @@ document.getElementById("importFile").onchange = (e) => {
   r.readAsText(file);
 }
 
-// --- PDF TABLE (UNCHANGED LAYOUT) ---
+// --- PDF EXPORT ---
 async function exportPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
