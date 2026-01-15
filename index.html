@@ -254,9 +254,25 @@ const menu = document.getElementById("menu");
 const menuBtn = document.getElementById("menuBtn");
 
 menuBtn.onclick = (e) => {
-  menu.style.display = menu.style.display === "block" ? "none" : "block";
+  const rect = menuBtn.getBoundingClientRect();
+
+  menu.style.display = "block";
+
+  // Perfect right-side alignment under 3-dot button
+  menu.style.top = `${rect.bottom + 8}px`;
+  menu.style.left = `${rect.right - menu.offsetWidth}px`;
+
+  // Extra safety so it never goes off-screen
+  if (menu.offsetLeft < 10) {
+    menu.style.left = "10px";
+  }
+
+  // Smooth pop animation (does not affect UI)
+  menu.style.animation = "menuPop 0.2s ease-out";
+
   e.stopPropagation();
 };
+
 
 window.onclick = (e) => {
   if (e.target !== menu && !menu.contains(e.target)) {
